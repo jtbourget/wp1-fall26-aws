@@ -1,0 +1,9 @@
+﻿<Solution>
+  <Folder Name="/src/">
+    <Project Path="src\Wp1Fall26Aws.Api\Wp1Fall26Aws.Api.csproj" />
+    <Project Path="src\Wp1Fall26Aws.Storage\Wp1Fall26Aws.Storage.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests\Wp1Fall26Aws.Tests\Wp1Fall26Aws.Tests.csproj" />
+  </Folder>
+</Solution>

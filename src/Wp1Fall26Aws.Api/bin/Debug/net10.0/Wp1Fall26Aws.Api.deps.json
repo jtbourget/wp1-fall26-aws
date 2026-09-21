@@ -1,0 +1,94 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "Wp1Fall26Aws.Api/1.0.0": {
+        "dependencies": {
+          "AWSSDK.Extensions.NETCore.Setup": "4.0.101.4",
+          "Wp1Fall26Aws.Storage": "1.0.0"
+        },
+        "runtime": {
+          "Wp1Fall26Aws.Api.dll": {}
+        }
+      },
+      "AWSSDK.Core/4.0.102.6": {
+        "runtime": {
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.102.6"
+          }
+        }
+      },
+      "AWSSDK.Extensions.NETCore.Setup/4.0.101.4": {
+        "dependencies": {
+          "AWSSDK.Core": "4.0.102.6"
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.Extensions.NETCore.Setup.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.101.4"
+          }
+        }
+      },
+      "AWSSDK.S3/4.0.103.3": {
+        "dependencies": {
+          "AWSSDK.Core": "4.0.102.6"
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.103.3"
+          }
+        }
+      },
+      "Wp1Fall26Aws.Storage/1.0.0": {
+        "dependencies": {
+          "AWSSDK.S3": "4.0.103.3"
+        },
+        "runtime": {
+          "Wp1Fall26Aws.Storage.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Wp1Fall26Aws.Api/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AWSSDK.Core/4.0.102.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-YwUi9qpz/OHqwEgsf8I5jj1aC/xkkjmF91R8Yx6yD66dhOiORgQJynYQk0fzI4xdhBgUaw8SRGbMkLRrvL+CNA==",
+      "path": "awssdk.core/4.0.102.6",
+      "hashPath": "awssdk.core.4.0.102.6.nupkg.sha512"
+    },
+    "AWSSDK.Extensions.NETCore.Setup/4.0.101.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-aFwe/JfS0jLZrFilKRbgsuE+qWtiKH0dLHc98xFqvvTvD95/IxkYt9A7mGEDBzacmIIO71l/aRJoWT/Z+ZCCJQ==",
+      "path": "awssdk.extensions.netcore.setup/4.0.101.4",
+      "hashPath": "awssdk.extensions.netcore.setup.4.0.101.4.nupkg.sha512"
+    },
+    "AWSSDK.S3/4.0.103.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-dndlr57QVnGDPTaQx4NlYhM7WvNLmfYVEanCVgRr8cPYPRGlT+/1vLoQEqeRr3McEFW/0v/hOjMxvcxNh9yWTw==",
+      "path": "awssdk.s3/4.0.103.3",
+      "hashPath": "awssdk.s3.4.0.103.3.nupkg.sha512"
+    },
+    "Wp1Fall26Aws.Storage/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
