@@ -66,6 +66,12 @@ jobs:
           echo "BUNDLE=wp1-$VERSION.zip" >> "$GITHUB_ENV"
           cd publish && zip -qr "../wp1-$VERSION.zip" . && cd ..
 
+      - name: Debug AWS OIDC inputs
+        run: |
+          echo "AWS_DEPLOY_ROLE=${{ vars.AWS_DEPLOY_ROLE }}"
+          echo "GITHUB_REF=${GITHUB_REF}"
+          echo "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}"
+
       # This is the moment the pipeline gets an AWS identity. No key is
       # stored anywhere - GitHub proves who it is, AWS checks that claim
       # against the role's trust policy, and hands back credentials that
