@@ -1,0 +1,129 @@
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches: [main]        # only main deploys - feature branches just build in ci.yml
+  workflow_dispatch:        # lets you trigger a deploy by hand from the Actions tab
+
+# Required for OpenID Connect. Without id-token: write, the request for a
+# temporary credential is refused and the error blames your role instead.
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  EB_APPLICATION: wp1-fall26-aws
+  EB_ENVIRONMENT: wp1-fall26-aws-dev
+  API_PROJECT: src/Wp1Fall26Aws.Api
+  API_DLL: Wp1Fall26Aws.Api.dll
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false   # never interrupt a deploy that is mid-flight
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Wp1Fall26Aws.slnx
+
+      - name: Build
+        run: dotnet build Wp1Fall26Aws.slnx --configuration Release --no-restore
+
+      # Tests run here as well as in ci.yml. A failing test stops the
+      # deploy - broken code must never reach the server.
+      - name: Test
+        run: dotnet test Wp1Fall26Aws.slnx --configuration Release --no-build
+
+      - name: Publish
+        run: dotnet publish ${{ env.API_PROJECT }} --configuration Release --no-build --output publish
+
+      # The web server on Elastic Beanstalk forwards requests to port 5000,
+      # but ASP.NET Core listens on 8080 by default. Binding explicitly
+      # avoids a deploy that "succeeds" and then returns 502 errors.
+      - name: Write Procfile
+        run: |
+          echo "web: dotnet ${{ env.API_DLL }} --urls http://0.0.0.0:5000" > publish/Procfile
+          cat publish/Procfile
+
+      # Zip the CONTENTS of publish/, not the folder itself. A bundle with
+      # an extra top-level folder deploys but never starts.
+      - name: Package source bundle
+        run: |
+          VERSION="${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
+          echo "VERSION_LABEL=$VERSION" >> "$GITHUB_ENV"
+          echo "BUNDLE=wp1-$VERSION.zip" >> "$GITHUB_ENV"
+          cd publish && zip -qr "../wp1-$VERSION.zip" . && cd ..
+
+      # This is the moment the pipeline gets an AWS identity. No key is
+      # stored anywhere - GitHub proves who it is, AWS checks that claim
+      # against the role's trust policy, and hands back credentials that
+      # expire when this run ends.
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE }}
+          role-session-name: wp1-deploy-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Capture this output for your evidence. It shows the role the
+      # PIPELINE assumed - not your user account.
+      - name: Confirm identity
+        run: aws sts get-caller-identity
+
+      - name: Upload source bundle
+        run: |
+          EB_BUCKET="$(aws elasticbeanstalk create-storage-location --query S3Bucket --output text)"
+          echo "EB_BUCKET=$EB_BUCKET" >> "$GITHUB_ENV"
+          aws s3 cp "$BUNDLE" "s3://$EB_BUCKET/$EB_APPLICATION/$BUNDLE"
+
+      - name: Create application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "$EB_APPLICATION" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle "S3Bucket=$EB_BUCKET,S3Key=$EB_APPLICATION/$BUNDLE" \
+            --description "${GITHUB_SHA::7} by ${GITHUB_ACTOR}"
+
+      - name: Deploy to environment
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name "$EB_ENVIRONMENT" \
+            --version-label "$VERSION_LABEL"
+
+      # update-environment returns immediately, so the workflow would
+      # otherwise report success before the server had finished. This
+      # polls until the environment settles, and prints the recent
+      # events if it settles unhealthy.
+      - name: Wait for the environment to go green
+        run: |
+          echo "Waiting for $EB_ENVIRONMENT to finish updating..."
+          for i in $(seq 1 40); do
+            read -r STATUS HEALTH <<< "$(aws elasticbeanstalk describe-environments \
+              --environment-names "$EB_ENVIRONMENT" \
+              --query 'Environments[0].[Status,Health]' --output text)"
+            echo "  status=$STATUS health=$HEALTH"
+            if [ "$STATUS" = "Ready" ]; then
+              [ "$HEALTH" = "Green" ] && { echo "Deployed."; exit 0; }
+              echo "Environment is Ready but health is $HEALTH."
+              echo "Recent events:"
+              aws elasticbeanstalk describe-events \
+                --environment-name "$EB_ENVIRONMENT" --max-items 15 \
+                --query 'Events[].[Severity,Message]' --output text
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for the environment."
+          exit 1
