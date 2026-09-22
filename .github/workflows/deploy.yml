@@ -11,13 +11,6 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  AWS_REGION: us-east-1
-  EB_APPLICATION: wp1-fall26-aws
-  EB_ENVIRONMENT: wp1-fall26-aws-dev
-  API_PROJECT: src/Wp1Fall26Aws.Api
-  API_DLL: Wp1Fall26Aws.Api.dll
-
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false   # never interrupt a deploy that is mid-flight
