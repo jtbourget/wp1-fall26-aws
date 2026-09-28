@@ -65,7 +65,25 @@ jobs:
           echo "VERSION_LABEL=$VERSION" >> "$GITHUB_ENV"
           echo "BUNDLE=wp1-$VERSION.zip" >> "$GITHUB_ENV"
           cd publish && zip -qr "../wp1-$VERSION.zip" . && cd ..
-
+      - name: Debug OIDC Token Claims
+        run: |
+          # Request an OIDC token from GitHub's internal token service
+          RESPONSE=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
+ 
+          TOKEN=$(echo "$RESPONSE" | jq -r '.value')
+ 
+          # Extract and decode the middle part (the payload/claims)
+          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2)
+          # base64url -> base64, then re-pad to a multiple of 4 so base64 -d won't truncate
+          PAYLOAD=$(echo "$PAYLOAD" | tr '_-' '/+')
+          while [ $(( ${#PAYLOAD} % 4 )) -ne 0 ]; do PAYLOAD="${PAYLOAD}="; done
+          DECODED=$(echo "$PAYLOAD" | base64 -d 2>/dev/null)
+ 
+          echo "=== OIDC CLAIMS FROM GITHUB ==="
+          echo "$DECODED" | jq '{aud, iss, sub, repository, repository_owner, ref}'
+ 
+ 
       - name: Debug AWS OIDC inputs
         run: |
           echo "AWS_DEPLOY_ROLE=${{ vars.AWS_DEPLOY_ROLE }}"
