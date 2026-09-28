@@ -108,7 +108,7 @@ jobs:
 
       - name: Upload source bundle
         run: |
-          EB_BUCKET="$(aws elasticbeanstalk create-storage-location --query S3Bucket --output text)"
+          EB_BUCKET="elasticbeanstalk-${{ env.AWS_REGION }}-944036659002"
           echo "EB_BUCKET=$EB_BUCKET" >> "$GITHUB_ENV"
           aws s3 cp "$BUNDLE" "s3://$EB_BUCKET/$EB_APPLICATION/$BUNDLE"
 
