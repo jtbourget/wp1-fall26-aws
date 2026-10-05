@@ -1,14 +1,15 @@
-name: Deploy to Elastic Beanstalk
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main]        # only main deploys - feature branches just build in ci.yml
-  workflow_dispatch:        # lets you trigger a deploy by hand from the Actions tab
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
-# Required for OpenID Connect. Without id-token: write, the request for a
-# temporary credential is refused and the error blames your role instead.
+# Workflow-level permissions apply to all jobs by default.
+# We restrict this to read-only access for code.
 permissions:
-  id-token: write
   contents: read
 
 env:
@@ -20,12 +21,11 @@ env:
 
 concurrency:
   group: deploy-${{ github.ref }}
-  cancel-in-progress: false   # never interrupt a deploy that is mid-flight
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build-test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -41,48 +41,57 @@ jobs:
       - name: Build
         run: dotnet build Wp1Fall26Aws.slnx --configuration Release --no-restore
 
-      # Tests run here as well as in ci.yml. A failing test stops the
-      # deploy - broken code must never reach the server.
       - name: Test
         run: dotnet test Wp1Fall26Aws.slnx --configuration Release --no-build
 
-      - name: Publish
-        run: dotnet publish ${{ env.API_PROJECT }} --configuration Release --no-build --output publish
+  deploy:
+    needs: build-test
+    # This ensures the deploy job ONLY runs on pushes to main (or manual triggers)
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    
+    # We grant the OIDC permission ONLY to the deploy job.
+    permissions:
+      contents: read
+      id-token: write
+      
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
 
-      # The web server on Elastic Beanstalk forwards requests to port 5000,
-      # but ASP.NET Core listens on 8080 by default. Binding explicitly
-      # avoids a deploy that "succeeds" and then returns 502 errors.
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Note: Removed the --no-build flag from the original script here because  
+      # this job runs on a fresh runner and needs to build the code before publishing.
+      - name: Publish
+        run: dotnet publish ${{ env.API_PROJECT }} --configuration Release --output publish
+
       - name: Write Procfile
         run: |
           echo "web: dotnet ${{ env.API_DLL }} --urls http://0.0.0.0:5000" > publish/Procfile
           cat publish/Procfile
 
-      # Zip the CONTENTS of publish/, not the folder itself. A bundle with
-      # an extra top-level folder deploys but never starts.
       - name: Package source bundle
         run: |
           VERSION="${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
           echo "VERSION_LABEL=$VERSION" >> "$GITHUB_ENV"
           echo "BUNDLE=wp1-$VERSION.zip" >> "$GITHUB_ENV"
           cd publish && zip -qr "../wp1-$VERSION.zip" . && cd ..
+
       - name: Debug OIDC Token Claims
         run: |
-          # Request an OIDC token from GitHub's internal token service
           RESPONSE=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
- 
           TOKEN=$(echo "$RESPONSE" | jq -r '.value')
- 
-          # Extract and decode the middle part (the payload/claims)
           PAYLOAD=$(echo "$TOKEN" | cut -d. -f2)
-          # base64url -> base64, then re-pad to a multiple of 4 so base64 -d won't truncate
           PAYLOAD=$(echo "$PAYLOAD" | tr '_-' '/+')
           while [ $(( ${#PAYLOAD} % 4 )) -ne 0 ]; do PAYLOAD="${PAYLOAD}="; done
           DECODED=$(echo "$PAYLOAD" | base64 -d 2>/dev/null)
- 
           echo "=== OIDC CLAIMS FROM GITHUB ==="
           echo "$DECODED" | jq '{aud, iss, sub, repository, repository_owner, ref}'
- 
  
       - name: Debug AWS OIDC inputs
         run: |
@@ -90,10 +99,6 @@ jobs:
           echo "GITHUB_REF=${GITHUB_REF}"
           echo "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}"
 
-      # This is the moment the pipeline gets an AWS identity. No key is
-      # stored anywhere - GitHub proves who it is, AWS checks that claim
-      # against the role's trust policy, and hands back credentials that
-      # expire when this run ends.
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -101,8 +106,6 @@ jobs:
           role-session-name: wp1-deploy-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Capture this output for your evidence. It shows the role the
-      # PIPELINE assumed - not your user account.
       - name: Confirm identity
         run: aws sts get-caller-identity
 
@@ -126,10 +129,6 @@ jobs:
             --environment-name "$EB_ENVIRONMENT" \
             --version-label "$VERSION_LABEL"
 
-      # update-environment returns immediately, so the workflow would
-      # otherwise report success before the server had finished. This
-      # polls until the environment settles, and prints the recent
-      # events if it settles unhealthy.
       - name: Wait for the environment to go green
         run: |
           echo "Waiting for $EB_ENVIRONMENT to finish updating..."
