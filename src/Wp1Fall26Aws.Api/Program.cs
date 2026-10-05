@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Amazon.S3;
 using Microsoft.AspNetCore.Builder;
@@ -56,3 +56,5 @@ app.MapPost("/documents", async (HttpRequest request, IDocumentStore documentSto
 });
 
 app.Run();
+
+public partial class Program { }
