@@ -76,7 +76,7 @@ public class S3DocumentStoreTests
         var result = await store.StoreAsync(upload);
 
         // Assert
-        Assert.False(result.Success); // Deliberately broken for demonstration
+        Assert.True(result.Success);
         Assert.NotNull(result.ObjectKey);
         
         Assert.NotNull(spy.LastRequest);
