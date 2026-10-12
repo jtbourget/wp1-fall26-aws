@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Wp1Fall26Aws.Storage;
@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
         services.Configure<S3StorageOptions>(configuration.GetSection("S3Storage"));
         services.AddSingleton<IS3ObjectClient, AwsS3ObjectClient>();
         services.AddSingleton<IDocumentStore, S3DocumentStore>();
+        services.AddSingleton<IDocumentRepository, InMemoryDocumentRepository>();
         
         return services;
     }

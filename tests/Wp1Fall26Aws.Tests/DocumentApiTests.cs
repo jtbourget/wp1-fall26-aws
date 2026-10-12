@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,5 +48,44 @@ public sealed class DocumentApiTests : IClassFixture<WebApplicationFactory<Progr
 
         Assert.NotNull(spy.LastRequest);
         Assert.Equal("test.txt", spy.LastRequest.Metadata["original-filename"]);
+    }
+
+    [Fact]
+    public async Task GetDocuments_Returns200WithList()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/documents");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("doc-1", body);
+    }
+
+    [Fact]
+    public async Task PutDocument_ValidUpdate_Returns200WithUpdatedData()
+    {
+        var client = _factory.CreateClient();
+
+        var updatePayload = new UpdateDocumentRequest("Updated Title", "Updated Description");
+        var response = await client.PutAsJsonAsync("/documents/doc-1", updatePayload);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Updated Title", body);
+    }
+
+    [Fact]
+    public async Task DeleteDocument_ExistingItem_Returns200AndRemovesItem()
+    {
+        var client = _factory.CreateClient();
+
+        // Delete doc-2
+        var deleteResponse = await client.DeleteAsync("/documents/doc-2");
+        Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
+
+        // Verify doc-2 is gone
+        var getResponse = await client.GetAsync("/documents/doc-2");
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
 }

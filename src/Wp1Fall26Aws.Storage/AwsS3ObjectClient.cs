@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +24,12 @@ public class AwsS3ObjectClient : IS3ObjectClient
         IReadOnlyDictionary<string, string> metadata,
         CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(bucket))
+        {
+            // Offline / local development without configured bucket
+            return;
+        }
+
         var request = new PutObjectRequest
         {
             BucketName = bucket,
