@@ -33,3 +33,10 @@ C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\obj\Release\net1
 C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\obj\Release\net10.0\Wp1Fall26Aws.Api.pdb
 C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\obj\Release\net10.0\Wp1Fall26Aws.Api.genruntimeconfig.cache
 C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\obj\Release\net10.0\ref\Wp1Fall26Aws.Api.dll
+C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\bin\Release\net10.0\Wp1Fall26Aws.Api.staticwebassets.runtime.json
+C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\obj\Release\net10.0\Wp1Fall26Aws.Api.sourcelink.json
+C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\obj\Release\net10.0\compressed\bte04inckz-{0}-lxq6x61ph3-lxq6x61ph3.gz
+C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\obj\Release\net10.0\compressed\a20jdf4gki-{0}-vagikyz9qx-vagikyz9qx.gz
+C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\obj\Release\net10.0\compressed\ekewirq442-{0}-zqr6me1sbn-zqr6me1sbn.gz
+C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\obj\Release\net10.0\compressed\1yng4vm5c9-{0}-w3umfcrx21-w3umfcrx21.gz
+C:\Users\joshu\source\repos\wp1-fall26-aws\src\Wp1Fall26Aws.Api\obj\Release\net10.0\compressed\58zqrqb2w2-{0}-7ntrv64ycs-7ntrv64ycs.gz
