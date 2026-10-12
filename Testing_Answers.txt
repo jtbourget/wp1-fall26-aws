@@ -1,0 +1,33 @@
+### Why do pull requests run without AWS credentials?
+Running PR tests without real credentials is a core security and reliability practice:
+1. **Security & Zero Trust:** It prevents malicious or accidental code in a pull request from leaking secrets, deleting real data, or racking up a massive AWS bill. 
+2. **Isolation & Determinism:** Tests that rely on a live network and real AWS buckets are slow and flaky. If AWS has a hiccup or network latency spikes, the test fails even if your code is perfect.
+3. **Forces Good Architecture:** Denying credentials forces developers to decouple their code from external dependencies by using interfaces and test doubles (like our `RecordingS3ObjectClientSpy`). This proves your *logic* works, rather than just proving you have an internet connection.
+
+---
+
+### What does each of your three new tests protect against?
+
+**1. PostDocuments_ValidFile_Returns201AndCallsS3 (Integration Test)**
+* **Protects against:** Broken HTTP contracts and misconfigured Dependency Injection. 
+* **Why it matters:** It ensures that when a user actually hits the `POST /documents` endpoint, the app correctly parses the multipart form, wires up all the necessary services, invokes the boundary service (S3), and returns the correct `201 Created` status. It guarantees the app won't crash on boot or fail to route the request.
+
+**2. StoreAsync_ValidDocument_ReturnsSuccessAndCallsS3 (Unit Test)**
+* **Protects against:** Logic errors and missing metadata in the storage service.
+* **Why it matters:** It ensures that the core domain logic in `S3DocumentStore` successfully formats the S3 key (e.g., prepending the correct prefix/date) and attaches the required metadata (like `original-filename`) before handing it off to the AWS client.
+
+**3. StoreAsync_InvalidDocument_ReturnsFalseAndNeverCallsS3 (Unit Test)**
+* **Protects against:** Bypassing validation and making unnecessary, expensive calls to AWS.
+* **Why it matters:** It guarantees that if a user uploads something malicious or invalid (like a `.exe`), the system short-circuits. By asserting `Assert.Null(spy.LastRequest)`, we mathematically prove that bad data will *never* leak across the boundary to touch AWS.
+
+
+---
+
+### Why must tests run before deploy?
+Running tests before deployment is a critical safeguard in modern software development. Here are the main reasons why:
+
+1. **Catch Bugs Early (Shift-Left):** It ensures that new code works exactly as intended and hasn't introduced logic errors before it ever reaches a live environment. Fixing a bug before deployment is significantly cheaper and faster than fixing it in production.
+2. **Prevent Regressions:** As systems grow, a change in one area can easily break something seemingly unrelated. Automated tests run against the entire codebase to guarantee that existing features still work as expected.
+3. **Protect the User Experience:** Deploying broken code can lead to downtime, corrupted data, or broken features for your users, which damages trust and can cost a business money.
+4. **Deploy with Confidence:** When developers know that a comprehensive test suite will catch mistakes, they can deploy changes more frequently and aggressively without fear of bringing down the system.
+5. **Enforce Contracts:** In integration testing, tests prove that your app correctly communicates with its boundaries (like external databases or AWS S3), ensuring that infrastructure and configuration align with the code.

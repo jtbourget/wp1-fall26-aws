@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Wp1Fall26Aws.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+70bd2e6091dcf57c9ae495969e615031fb5a300f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+304b16d343f3204a0feaf8107a58f5348e9a8082")]
 [assembly: System.Reflection.AssemblyProductAttribute("Wp1Fall26Aws.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Wp1Fall26Aws.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

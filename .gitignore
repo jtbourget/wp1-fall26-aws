@@ -14,3 +14,9 @@ obj/
 *.suo
 *.userosscache
 *.sln.docstates
+
+# Node / Angular
+node_modules/
+.angular/
+dist/
+.npm/
