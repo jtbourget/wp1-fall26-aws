@@ -1,0 +1,429 @@
+<div class="app-container">
+  <!-- Top Navigation & Header -->
+  <header class="navbar">
+    <div class="brand">
+      <span class="brand-icon">📁</span>
+      <div>
+        <h1 class="brand-title">AWS S3 Document Consumer App</h1>
+        <p class="brand-subtitle">Live REST API Consumer (GET, POST, PUT, DELETE)</p>
+      </div>
+    </div>
+
+    <!-- API Connection Status & URL Selector -->
+    <div class="api-status-bar">
+      <div class="status-indicator" [class.online]="apiConnected === true" [class.offline]="apiConnected === false">
+        <span class="status-dot"></span>
+        <span class="status-label">
+          {{ apiConnected === true ? 'API Connected' : (apiConnected === false ? 'API Disconnected' : 'Checking API...') }}
+        </span>
+      </div>
+
+      <div class="api-config">
+        <input
+          type="text"
+          [(ngModel)]="apiUrlInput"
+          placeholder="http://localhost:5180"
+          class="api-input"
+          title="API Base URL"
+        />
+        <button class="btn btn-secondary btn-sm" (click)="applyApiUrl()" title="Test Connection & Reconnect">
+          Connect / Reload
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Global Alert Banners -->
+  <div class="alerts-container">
+    <div *ngIf="errorMessage" class="alert alert-error" role="alert">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-body">
+        <strong>Error:</strong>
+        <!-- API-provided error rendered safely as text -->
+        <span class="alert-text">{{ errorMessage }}</span>
+      </div>
+      <button class="alert-close" (click)="errorMessage = null" aria-label="Close error message">×</button>
+    </div>
+
+    <div *ngIf="successMessage" class="alert alert-success" role="alert">
+      <span class="alert-icon">✓</span>
+      <div class="alert-body">
+        <strong>Success:</strong>
+        <!-- API-provided success message rendered safely as text -->
+        <span class="alert-text">{{ successMessage }}</span>
+      </div>
+      <button class="alert-close" (click)="successMessage = null" aria-label="Close success message">×</button>
+    </div>
+  </div>
+
+  <main class="content-grid">
+    <!-- Left Column: POST Resource Form -->
+    <section class="card create-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="badge badge-post">POST</span>
+          <h2>Create New Resource</h2>
+        </div>
+        <p class="card-description">Submit data to the API to store a document or upload a file.</p>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="tabs">
+        <button
+          class="tab-btn"
+          [class.active]="creationMode === 'file'"
+          (click)="creationMode = 'file'">
+          📄 Upload Document (.txt, .pdf, .png, .jpg)
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="creationMode === 'json'"
+          (click)="creationMode = 'json'">
+          ✏️ Quick Text Document
+        </button>
+      </div>
+
+      <!-- Mode 1: File Upload (Multipart Form Data) -->
+      <form *ngIf="creationMode === 'file'" (ngSubmit)="submitFileUpload()" class="form-body">
+        <div class="form-group">
+          <label for="fileUploadInput" class="form-label">Select File *</label>
+          <input
+            id="fileUploadInput"
+            type="file"
+            (change)="onFileSelected($event)"
+            accept=".txt,.pdf,.png,.jpg,.jpeg"
+            class="file-input"
+            [disabled]="isActionLoading"
+          />
+          <small class="form-hint">Accepted: .txt, .pdf, .png, .jpg, .jpeg (Max 1 MiB)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="fileTitleInput" class="form-label">Document Title</label>
+          <input
+            id="fileTitleInput"
+            type="text"
+            [(ngModel)]="fileTitle"
+            name="fileTitle"
+            placeholder="e.g. Q4 Financial Report"
+            class="text-input"
+            [disabled]="isActionLoading"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="fileDescInput" class="form-label">Description / Notes</label>
+          <textarea
+            id="fileDescInput"
+            [(ngModel)]="fileDescription"
+            name="fileDescription"
+            placeholder="Provide context or summary for this file"
+            class="textarea-input"
+            rows="3"
+            [disabled]="isActionLoading"
+          ></textarea>
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary btn-block"
+          [disabled]="isActionLoading || !selectedFile">
+          <span *ngIf="isActionLoading" class="spinner-small"></span>
+          {{ isActionLoading ? 'Uploading to API...' : 'POST /documents (Upload)' }}
+        </button>
+      </form>
+
+      <!-- Mode 2: Quick Text Resource (JSON) -->
+      <form *ngIf="creationMode === 'json'" (ngSubmit)="submitJsonDocument()" class="form-body">
+        <div class="form-group">
+          <label for="newDocTitle" class="form-label">Document Title *</label>
+          <input
+            id="newDocTitle"
+            type="text"
+            [(ngModel)]="newDoc.title"
+            name="title"
+            placeholder="e.g. Architecture Decisions"
+            class="text-input"
+            required
+            [disabled]="isActionLoading"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="newDocFileName" class="form-label">Virtual File Name</label>
+          <input
+            id="newDocFileName"
+            type="text"
+            [(ngModel)]="newDoc.fileName"
+            name="fileName"
+            placeholder="spec-doc.txt"
+            class="text-input"
+            [disabled]="isActionLoading"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="newDocContent" class="form-label">Content Text</label>
+          <textarea
+            id="newDocContent"
+            [(ngModel)]="newDoc.content"
+            name="content"
+            placeholder="Enter initial document content or notes here..."
+            class="textarea-input"
+            rows="3"
+            [disabled]="isActionLoading"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="newDocDesc" class="form-label">Description</label>
+          <input
+            id="newDocDesc"
+            type="text"
+            [(ngModel)]="newDoc.description"
+            name="description"
+            placeholder="Brief summary"
+            class="text-input"
+            [disabled]="isActionLoading"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary btn-block"
+          [disabled]="isActionLoading || !newDoc.title.trim()">
+          <span *ngIf="isActionLoading" class="spinner-small"></span>
+          {{ isActionLoading ? 'Creating Resource...' : 'POST /documents (Create)' }}
+        </button>
+      </form>
+    </section>
+
+    <!-- Right Column: GET Documents List & Table -->
+    <section class="card documents-card">
+      <div class="card-header flex-header">
+        <div>
+          <div class="card-title-group">
+            <span class="badge badge-get">GET</span>
+            <h2>Stored Resources</h2>
+            <span class="counter-badge">{{ filteredDocuments.length }} item{{ filteredDocuments.length === 1 ? '' : 's' }}</span>
+          </div>
+          <p class="card-description">Live data retrieved from API endpoint <code>GET /documents</code>.</p>
+        </div>
+
+        <div class="header-actions">
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            placeholder="Filter documents..."
+            class="search-input"
+          />
+          <button
+            class="btn btn-outline"
+            (click)="loadDocuments()"
+            [disabled]="isLoading"
+            title="Refresh from API">
+            <span *ngIf="isLoading" class="spinner-small"></span>
+            {{ isLoading ? 'Loading...' : '🔄 Refresh' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State View -->
+      <div *ngIf="isLoading" class="state-container loading-state">
+        <div class="loading-spinner"></div>
+        <p class="state-title">Retrieving data from API...</p>
+        <p class="state-sub">Fetching live resource list from <code>/documents</code></p>
+      </div>
+
+      <!-- Distinct Empty State View -->
+      <div *ngIf="!isLoading && documents.length === 0" class="state-container empty-state">
+        <div class="empty-icon">📭</div>
+        <h3 class="state-title">No documents found</h3>
+        <p class="state-sub">The storage repository is currently empty. Use the form on the left to POST your first resource.</p>
+      </div>
+
+      <!-- Filtered Empty State View (Search has no match) -->
+      <div *ngIf="!isLoading && documents.length > 0 && filteredDocuments.length === 0" class="state-container empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3 class="state-title">No matching documents</h3>
+        <p class="state-sub">No items match your filter "{{ searchTerm }}".</p>
+        <button class="btn btn-secondary btn-sm" (click)="searchTerm = ''">Clear Filter</button>
+      </div>
+
+      <!-- Useful Results: Resource Table View -->
+      <div *ngIf="!isLoading && filteredDocuments.length > 0" class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Title / Description</th>
+              <th>File Name</th>
+              <th>Content Type</th>
+              <th>Size</th>
+              <th>Uploaded (UTC)</th>
+              <th class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let doc of filteredDocuments" [class.highlighted]="doc.id === selectedDocument?.id">
+              <td>
+                <div class="doc-title-cell">
+                  <!-- API-provided title rendered safely as text -->
+                  <strong class="doc-title">{{ doc.title }}</strong>
+                  <!-- API-provided description rendered safely as text -->
+                  <span class="doc-desc" *ngIf="doc.description">{{ doc.description }}</span>
+                  <span class="doc-id">ID: {{ doc.id }}</span>
+                </div>
+              </td>
+              <td>
+                <!-- API-provided fileName rendered safely as text -->
+                <span class="doc-filename">{{ doc.fileName }}</span>
+              </td>
+              <td>
+                <span class="type-pill">{{ doc.contentType }}</span>
+              </td>
+              <td class="size-cell">
+                {{ formatBytes(doc.contentLength) }}
+              </td>
+              <td class="date-cell">
+                {{ formatDate(doc.uploadedUtc) }}
+                <span *ngIf="doc.updatedUtc" class="updated-tag" title="Last modified">
+                  (edited)
+                </span>
+              </td>
+              <td class="actions-cell">
+                <button
+                  class="btn btn-action btn-edit"
+                  (click)="startEdit(doc)"
+                  title="Edit document (PUT)">
+                  ✏️ Edit
+                </button>
+                <button
+                  class="btn btn-action btn-delete"
+                  (click)="confirmDelete(doc)"
+                  title="Delete document (DELETE)">
+                  🗑️ Delete
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Live HTTP Telemetry / Activity Log -->
+  <section class="card logs-section">
+    <div class="card-header flex-header">
+      <div class="card-title-group">
+        <span class="badge badge-info">TELEMETRY</span>
+        <h3>Live API Activity Log</h3>
+      </div>
+      <button class="btn btn-outline btn-sm" (click)="documentService.httpLogs = []">Clear Log</button>
+    </div>
+    <div class="logs-container">
+      <div *ngIf="httpLogs.length === 0" class="empty-logs">
+        No HTTP requests sent yet. Perform any GET, POST, PUT, or DELETE operation above to see live activity.
+      </div>
+      <div *ngFor="let log of httpLogs" class="log-entry" [class.log-failure]="!log.success">
+        <span class="log-time">{{ log.timestamp }}</span>
+        <span class="log-badge" [ngClass]="'log-badge-' + log.method.toLowerCase()">{{ log.method }}</span>
+        <span class="log-endpoint">{{ log.endpoint }}</span>
+        <span class="log-status" [class.status-ok]="log.success" [class.status-err]="!log.success">
+          {{ log.statusCode }} {{ log.statusText }}
+        </span>
+        <span class="log-duration">{{ log.durationMs }}ms</span>
+        <span class="log-details">{{ log.details }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PUT: Edit Document Modal Dialog -->
+  <div *ngIf="editingDocument" class="modal-backdrop" (click)="cancelEdit()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="card-title-group">
+          <span class="badge badge-put">PUT</span>
+          <h3>Edit Document Resource</h3>
+        </div>
+        <button class="modal-close" (click)="cancelEdit()">×</button>
+      </div>
+
+      <form (ngSubmit)="submitUpdate()" class="modal-body">
+        <p class="modal-info">
+          Updating resource ID: <code>{{ editingDocument.id }}</code> via <code>PUT /documents/{{ editingDocument.id }}</code>
+        </p>
+
+        <div class="form-group">
+          <label for="editTitle" class="form-label">Title *</label>
+          <input
+            id="editTitle"
+            type="text"
+            [(ngModel)]="editPayload.title"
+            name="editTitle"
+            class="text-input"
+            required
+            [disabled]="isActionLoading"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="editDesc" class="form-label">Description</label>
+          <textarea
+            id="editDesc"
+            [(ngModel)]="editPayload.description"
+            name="editDesc"
+            class="textarea-input"
+            rows="4"
+            [disabled]="isActionLoading"
+          ></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="cancelEdit()" [disabled]="isActionLoading">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="isActionLoading || !editPayload.title.trim()">
+            <span *ngIf="isActionLoading" class="spinner-small"></span>
+            {{ isActionLoading ? 'Saving...' : 'PUT /documents/' + editingDocument.id + ' (Save)' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- DELETE: Confirm Delete Modal Dialog -->
+  <div *ngIf="deletingId" class="modal-backdrop" (click)="cancelDelete()">
+    <div class="modal-dialog modal-danger" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="card-title-group">
+          <span class="badge badge-delete">DELETE</span>
+          <h3>Confirm Removal</h3>
+        </div>
+        <button class="modal-close" (click)="cancelDelete()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="confirm-message">
+          Are you sure you want to delete document <code>{{ deletingId }}</code>?
+        </p>
+        <p class="confirm-sub">
+          This sends a live <code>DELETE /documents/{{ deletingId }}</code> request to the API. This action cannot be undone.
+        </p>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="cancelDelete()" [disabled]="isActionLoading">
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger"
+            (click)="executeDelete(deletingId)"
+            [disabled]="isActionLoading">
+            <span *ngIf="isActionLoading" class="spinner-small"></span>
+            {{ isActionLoading ? 'Deleting...' : 'DELETE /documents/' + deletingId }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

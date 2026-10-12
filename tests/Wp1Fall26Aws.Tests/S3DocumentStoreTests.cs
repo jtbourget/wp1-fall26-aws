@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
@@ -63,4 +63,41 @@ public class S3DocumentStoreTests
         Assert.False(result.Success);
         Assert.Empty(fake.Calls);
     }
+
+    [Fact]
+    public async Task StoreAsync_ValidDocument_ReturnsSuccessAndCallsS3()
+    {
+        // Arrange
+        var spy = new RecordingS3ObjectClientSpy();
+        var store = new S3DocumentStore(spy, Options.Create(_options));
+        var upload = new DocumentUpload("test.txt", "text/plain", 18, new MemoryStream("synthetic lab file"u8.ToArray()));
+
+        // Act
+        var result = await store.StoreAsync(upload);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(result.ObjectKey);
+        
+        Assert.NotNull(spy.LastRequest);
+        Assert.Equal("test.txt", spy.LastRequest.Metadata["original-filename"]);
+    }
+
+    [Fact]
+    public async Task StoreAsync_InvalidDocument_ReturnsFalseAndNeverCallsS3()
+    {
+        // Arrange
+        var spy = new RecordingS3ObjectClientSpy();
+        var store = new S3DocumentStore(spy, Options.Create(_options));
+        var upload = new DocumentUpload("test.exe", "text/plain", 18, new MemoryStream("synthetic lab file"u8.ToArray()));
+
+        // Act
+        var result = await store.StoreAsync(upload);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Null(result.ObjectKey);
+        Assert.Null(spy.LastRequest);
+    }
 }
+
