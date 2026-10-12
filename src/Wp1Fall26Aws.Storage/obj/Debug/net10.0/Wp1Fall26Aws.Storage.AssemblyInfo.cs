@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Wp1Fall26Aws.Storage")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+70bd2e6091dcf57c9ae495969e615031fb5a300f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a168bc993076490220e3d7c6cdca715d0e12bcfb")]
 [assembly: System.Reflection.AssemblyProductAttribute("Wp1Fall26Aws.Storage")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Wp1Fall26Aws.Storage")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
