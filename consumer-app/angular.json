@@ -46,6 +46,7 @@
               "base": "../src/Wp1Fall26Aws.Api/wwwroot",
               "browser": ""
             },
+            "index": "src/index.html",
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "assets": [
