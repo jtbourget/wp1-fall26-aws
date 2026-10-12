@@ -7,10 +7,22 @@ import { CreateDocumentPayload, DocumentItem, HttpLogEntry, UpdateDocumentPayloa
   providedIn: 'root'
 })
 export class DocumentService {
-  private apiBaseUrl = 'http://localhost:5180';
+  private apiBaseUrl: string;
   public httpLogs: HttpLogEntry[] = [];
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    this.apiBaseUrl = this.detectDefaultBaseUrl();
+  }
+
+  private detectDefaultBaseUrl(): string {
+    if (typeof window !== 'undefined' && window.location) {
+      if (window.location.port === '4200') {
+        return 'http://localhost:5180';
+      }
+      return window.location.origin;
+    }
+    return 'http://localhost:5180';
+  }
 
   getBaseUrl(): string {
     return this.apiBaseUrl;

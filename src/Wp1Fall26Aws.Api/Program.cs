@@ -40,7 +40,9 @@ var app = builder.Build();
 
 app.UseCors();
 
-app.MapGet("/", () => "OK");
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy" }));
 
 // GET /documents: Retrieve all stored documents
@@ -220,6 +222,8 @@ app.MapDelete("/documents/{id}", async (string id, IDocumentRepository repositor
 
     return Results.Ok(new { message = $"Document '{id}' deleted successfully.", id });
 });
+
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

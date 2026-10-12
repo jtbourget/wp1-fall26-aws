@@ -422,3 +422,4 @@ C:\Users\joshu\source\repos\wp1-fall26-aws\tests\Wp1Fall26Aws.Tests\obj\Debug\ne
 C:\Users\joshu\source\repos\wp1-fall26-aws\tests\Wp1Fall26Aws.Tests\obj\Debug\net10.0\Wp1Fall26Aws.Tests.pdb
 C:\Users\joshu\source\repos\wp1-fall26-aws\tests\Wp1Fall26Aws.Tests\obj\Debug\net10.0\Wp1Fall26Aws.Tests.genruntimeconfig.cache
 C:\Users\joshu\source\repos\wp1-fall26-aws\tests\Wp1Fall26Aws.Tests\obj\Debug\net10.0\ref\Wp1Fall26Aws.Tests.dll
+C:\Users\joshu\source\repos\wp1-fall26-aws\tests\Wp1Fall26Aws.Tests\bin\Debug\net10.0\Wp1Fall26Aws.Api.staticwebassets.runtime.json

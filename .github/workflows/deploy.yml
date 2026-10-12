@@ -64,6 +64,18 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Angular Frontend
+        run: |
+          cd consumer-app
+          npm ci || npm install
+          npm run build
+          cd ..
+
       # Note: Removed the --no-build flag from the original script here because  
       # this job runs on a fresh runner and needs to build the code before publishing.
       - name: Publish
