@@ -57,3 +57,19 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+---
+
+## 4. Consumed API Routes and Resources
+
+The consumer app communicates with the following REST API routes:
+
+| HTTP Method | Route | Target Resource | Description |
+| :--- | :--- | :--- | :--- |
+| **GET** | `/documents` | **Document Collection** | Retrieves all stored document items for the data table view. |
+| **GET** | `/documents/{id}` | **Individual Document** | Retrieves details for a specific document by its ID or S3 object key. |
+| **POST** | `/documents` | **Document Collection** | Submits file uploads (multipart/form-data) or creates text documents (JSON). |
+| **PUT** | `/documents/{id}` | **Individual Document** | Updates document metadata (Title, Description). |
+| **DELETE** | `/documents/{id}` | **Individual Document** | Deletes a document by ID. |
+| **GET** | `/health` | **Service Health** | Health check verifying API connectivity and displaying connection status. |
+
