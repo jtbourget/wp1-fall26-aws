@@ -10,8 +10,20 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Wp1Fall26Aws.Storage;
 
+
+// =============================================================================
+// Application Initialization & Host Configuration
+// =============================================================================
 var builder = WebApplication.CreateBuilder(args);
 
+// -----------------------------------------------------------------------------
+// AWS SDK & Credentials Configuration
+// -----------------------------------------------------------------------------
+// Resolves AWS options from configuration or environment variables.
+// In local development or automated CI runners where real AWS credentials
+// are deliberately not supplied, we configure a safe fallback mock credential
+// and default region (us-east-1) to allow the AWS SDK client to instantiate
+// without throwing initialization exceptions.
 var awsOptions = builder.Configuration.GetAWSOptions();
 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID")) &&
     string.IsNullOrEmpty(builder.Configuration["AWS:AccessKey"]))
@@ -24,8 +36,15 @@ if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID")
 }
 builder.Services.AddDefaultAWSOptions(awsOptions);
 builder.Services.AddAWSService<IAmazonS3>();
+
+// Register storage options, S3 boundary client, document store, and repository
 builder.Services.AddStorageServices(builder.Configuration);
 
+// -----------------------------------------------------------------------------
+// Cross-Origin Resource Sharing (CORS) Policy
+// -----------------------------------------------------------------------------
+// Enables cross-origin HTTP requests from client applications (such as the
+// Angular consumer app running on http://localhost:4200 or custom ports).
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -38,32 +57,72 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// =============================================================================
+// HTTP Request Pipeline Middleware
+// =============================================================================
 app.UseCors();
 
+// Serve static frontend assets from wwwroot (compiled Angular SPA bundle)
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-app.MapGet("/health", () => Results.Ok(new { Status = "Healthy" }));
+// =============================================================================
+// REST API Endpoints
+// =============================================================================
 
-// GET /documents: Retrieve all stored documents
+/// <summary>
+/// Health Check Probe
+/// GET /health
+/// Returns service liveness status. Used by consumer clients, AWS Elastic Beanstalk
+/// load balancers, and container orchestrators to verify application availability.
+/// </summary>
+app.MapGet("/health", () => Results.Ok(new { Status = "Healthy" }))
+   .WithName("HealthCheck")
+   .WithSummary("Service health probe")
+   .WithDescription("Returns HTTP 200 with service health status when the API is running.");
+
+/// <summary>
+/// Retrieve All Documents
+/// GET /documents
+/// Returns a collection of all stored document records, sorted newest first.
+/// </summary>
 app.MapGet("/documents", async (IDocumentRepository repository) =>
 {
     var documents = await repository.GetAllAsync();
     return Results.Ok(documents);
-});
+})
+.WithName("GetAllDocuments")
+.WithSummary("Retrieve all document records")
+.WithDescription("Queries the repository for all stored document metadata records.");
 
-// GET /documents/{id}: Retrieve document by ID or ObjectKey
+/// <summary>
+/// Retrieve Single Document
+/// GET /documents/{id}
+/// Finds and returns metadata for an individual document matching the given ID or S3 ObjectKey.
+/// Returns 404 Not Found if no document matches the identifier.
+/// </summary>
 app.MapGet("/documents/{id}", async (string id, IDocumentRepository repository) =>
 {
     var document = await repository.GetByIdAsync(id);
     return document is not null
         ? Results.Ok(document)
         : Results.NotFound(new { error = $"Document with ID '{id}' was not found." });
-});
+})
+.WithName("GetDocumentById")
+.WithSummary("Retrieve an individual document by ID or S3 ObjectKey")
+.WithDescription("Looks up a document in the repository by unique identifier or S3 key.");
 
-// POST /documents: Upload a file (multipart) or create a document (JSON)
+/// <summary>
+/// Create / Upload Document
+/// POST /documents
+/// Accepts either:
+/// 1. Multipart Form Data: file (binary), title (optional), description (optional).
+/// 2. JSON: title (required), description, fileName, contentType, content.
+/// Uploads the binary stream to Amazon S3 and registers the document record in the repository.
+/// </summary>
 app.MapPost("/documents", async (HttpRequest request, IDocumentStore documentStore, IDocumentRepository repository, IOptions<S3StorageOptions> options) =>
 {
+    // Mode 1: Multipart form-data file upload
     if (request.HasFormContentType)
     {
         var form = await request.ReadFormAsync();
@@ -132,6 +191,7 @@ app.MapPost("/documents", async (HttpRequest request, IDocumentStore documentSto
             return Results.StatusCode(500);
         }
     }
+    // Mode 2: JSON payload creating a text-based document
     else if (request.HasJsonContentType())
     {
         try
@@ -192,9 +252,17 @@ app.MapPost("/documents", async (HttpRequest request, IDocumentStore documentSto
     }
 
     return Results.BadRequest(new { errors = new[] { "Invalid content type. Expected multipart/form-data or application/json." } });
-});
+})
+.WithName("CreateDocument")
+.WithSummary("Upload or create a new document resource")
+.WithDescription("Persists a document to AWS S3 and creates an indexed metadata record.");
 
-// PUT /documents/{id}: Update document metadata
+/// <summary>
+/// Update Document Metadata
+/// PUT /documents/{id}
+/// Updates editable metadata (Title and Description) of an existing document record.
+/// Updates the record's UpdatedUtc timestamp.
+/// </summary>
 app.MapPut("/documents/{id}", async (string id, UpdateDocumentRequest updateRequest, IDocumentRepository repository) =>
 {
     if (string.IsNullOrWhiteSpace(updateRequest.Title))
@@ -209,9 +277,16 @@ app.MapPut("/documents/{id}", async (string id, UpdateDocumentRequest updateRequ
     }
 
     return Results.Ok(updated);
-});
+})
+.WithName("UpdateDocument")
+.WithSummary("Update document metadata")
+.WithDescription("Modifies Title and Description of an existing document record.");
 
-// DELETE /documents/{id}: Delete a document
+/// <summary>
+/// Delete Document
+/// DELETE /documents/{id}
+/// Removes the document record from the repository index.
+/// </summary>
 app.MapDelete("/documents/{id}", async (string id, IDocumentRepository repository) =>
 {
     var deleted = await repository.DeleteAsync(id);
@@ -221,10 +296,17 @@ app.MapDelete("/documents/{id}", async (string id, IDocumentRepository repositor
     }
 
     return Results.Ok(new { message = $"Document '{id}' deleted successfully.", id });
-});
+})
+.WithName("DeleteDocument")
+.WithSummary("Delete a document record")
+.WithDescription("Deletes an existing document record by its unique ID.");
 
+// Single-page application fallback route
 app.MapFallbackToFile("index.html");
 
 app.Run();
 
+/// <summary>
+/// Entry point marker class required for WebApplicationFactory integration testing.
+/// </summary>
 public partial class Program { }

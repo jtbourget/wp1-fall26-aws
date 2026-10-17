@@ -1,14 +1,25 @@
-﻿using System.IO;
+using System.IO;
 using System.Linq;
 using Wp1Fall26Aws.Storage;
 using Xunit;
 
 namespace Wp1Fall26Aws.Tests;
 
+/// <summary>
+/// Unit tests verifying document upload validation policy rules.
+/// </summary>
+/// <remarks>
+/// Validates boundary limits (zero-byte, 1 MiB boundary, 1 byte over 1 MiB),
+/// file extension allowlisting/case insensitivity, MIME content type restrictions,
+/// and multiple error aggregation.
+/// </remarks>
 public class DocumentValidatorTests
 {
     private readonly S3StorageOptions _options = new() { MaxFileSizeBytes = 1048576 };
 
+    /// <summary>
+    /// Verifies that a valid small .txt document produces zero validation errors.
+    /// </summary>
     [Fact]
     public void AcceptsValidSmallTxt()
     {
@@ -17,6 +28,9 @@ public class DocumentValidatorTests
         Assert.Empty(errors);
     }
 
+    /// <summary>
+    /// Verifies that a 0-byte (empty) file is rejected with the message "File is empty.".
+    /// </summary>
     [Fact]
     public void RejectsEmpty()
     {
@@ -25,6 +39,10 @@ public class DocumentValidatorTests
         Assert.Contains(errors, e => e == "File is empty.");
     }
 
+    /// <summary>
+    /// Verifies precise boundary behavior: exactly 1,048,576 bytes is accepted,
+    /// while 1,048,577 bytes (1 byte over boundary) is rejected.
+    /// </summary>
     [Fact]
     public void RejectsOversize_PassesAtBoundary()
     {
@@ -37,6 +55,9 @@ public class DocumentValidatorTests
         Assert.Contains(errors2, e => e.Contains("exceeds the maximum size"));
     }
 
+    /// <summary>
+    /// Verifies that disallowed executable extensions (.exe) are rejected.
+    /// </summary>
     [Fact]
     public void RejectsExe()
     {
@@ -45,6 +66,9 @@ public class DocumentValidatorTests
         Assert.Contains(errors, e => e.Contains("not allowed"));
     }
 
+    /// <summary>
+    /// Verifies that disallowed MIME content types (such as application/json) are rejected.
+    /// </summary>
     [Fact]
     public void RejectsDisallowedContentType()
     {
@@ -53,6 +77,9 @@ public class DocumentValidatorTests
         Assert.Contains(errors, e => e.Contains("not allowed"));
     }
 
+    /// <summary>
+    /// Verifies that file extension checking is case-insensitive (e.g. uppercase .PDF is accepted).
+    /// </summary>
     [Fact]
     public void AcceptsUppercasePdf()
     {
@@ -61,6 +88,10 @@ public class DocumentValidatorTests
         Assert.Empty(errors);
     }
     
+    /// <summary>
+    /// Verifies that multiple validation errors (e.g. bad extension + bad MIME + oversize)
+    /// are aggregated into the returned error list simultaneously.
+    /// </summary>
     [Fact]
     public void ReturnsMultipleErrors()
     {

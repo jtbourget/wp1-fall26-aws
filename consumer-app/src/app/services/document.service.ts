@@ -3,17 +3,34 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, catchError, map, throwError } from 'rxjs';
 import { CreateDocumentPayload, DocumentItem, HttpLogEntry, UpdateDocumentPayload } from '../models/document.model';
 
+/**
+ * Service providing RESTful communication with the document backend API.
+ * 
+ * Features:
+ * - Dynamic backend URL detection (auto-resolves localhost:5180 when running under ng serve on 4200).
+ * - Real-time HTTP activity and telemetry logging for demonstration and debugging.
+ * - Reactive Observable streams for CRUD endpoints (GET, POST, PUT, DELETE).
+ * - Centralized HTTP error normalization and user-friendly error message extraction.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class DocumentService {
+  /** The base URL of the ASP.NET Core API backend. */
   private apiBaseUrl: string;
+
+  /** Circular buffer of recent HTTP requests with duration and status details. */
   public httpLogs: HttpLogEntry[] = [];
 
   constructor(private http: HttpClient) {
     this.apiBaseUrl = this.detectDefaultBaseUrl();
   }
 
+  /**
+   * Intelligently discovers the default API base URL based on browser origin.
+   * If running locally via Angular CLI dev server on port 4200, points to the .NET API at http://localhost:5180.
+   * Otherwise, assumes the API is co-hosted with the frontend under the same origin.
+   */
   private detectDefaultBaseUrl(): string {
     if (typeof window !== 'undefined' && window.location) {
       if (window.location.port === '4200') {
@@ -24,14 +41,26 @@ export class DocumentService {
     return 'http://localhost:5180';
   }
 
+  /**
+   * Returns the currently configured API base URL.
+   */
   getBaseUrl(): string {
     return this.apiBaseUrl;
   }
 
+  /**
+   * Overrides the API base URL at runtime (e.g. from the UI connection bar).
+   * Automatically strips trailing slashes for consistency.
+   * @param url The new base URL string.
+   */
   setBaseUrl(url: string): void {
     this.apiBaseUrl = url.replace(/\/+$/, '');
   }
 
+  /**
+   * Appends an entry to the rolling HTTP activity log, keeping the most recent 30 events.
+   * @param entry Log entry without ID and timestamp (auto-populated).
+   */
   private addLog(entry: Omit<HttpLogEntry, 'id' | 'timestamp'>): void {
     const log: HttpLogEntry = {
       ...entry,
@@ -44,6 +73,10 @@ export class DocumentService {
     }
   }
 
+  /**
+   * Performs a health check GET request to /health to verify API connectivity.
+   * @returns An Observable emitting `{ status: string }`.
+   */
   checkHealth(): Observable<{ status: string }> {
     const start = performance.now();
     const url = `${this.apiBaseUrl}/health`;
@@ -75,6 +108,10 @@ export class DocumentService {
     );
   }
 
+  /**
+   * Fetches all stored document records from GET /documents.
+   * @returns An Observable emitting an array of `DocumentItem` records.
+   */
   getDocuments(): Observable<DocumentItem[]> {
     const start = performance.now();
     const url = `${this.apiBaseUrl}/documents`;
@@ -106,6 +143,11 @@ export class DocumentService {
     );
   }
 
+  /**
+   * Fetches an individual document record by ID or S3 object key from GET /documents/{id}.
+   * @param id The document ID or S3 key.
+   * @returns An Observable emitting the matching `DocumentItem`.
+   */
   getDocument(id: string): Observable<DocumentItem> {
     const start = performance.now();
     const url = `${this.apiBaseUrl}/documents/${encodeURIComponent(id)}`;
@@ -137,6 +179,14 @@ export class DocumentService {
     );
   }
 
+  /**
+   * Uploads a file via multipart/form-data to POST /documents.
+   * The file stream will be persisted into Amazon S3 by the backend.
+   * @param file The browser File object to upload.
+   * @param title Optional title override.
+   * @param description Optional description text.
+   * @returns An Observable emitting the newly created resource details.
+   */
   uploadDocument(file: File, title: string, description: string): Observable<any> {
     const start = performance.now();
     const url = `${this.apiBaseUrl}/documents`;
@@ -177,6 +227,11 @@ export class DocumentService {
     );
   }
 
+  /**
+   * Creates a text-based document from raw JSON payload to POST /documents.
+   * @param payload Document metadata and string content.
+   * @returns An Observable emitting the created resource details.
+   */
   createDocumentJson(payload: CreateDocumentPayload): Observable<any> {
     const start = performance.now();
     const url = `${this.apiBaseUrl}/documents`;
@@ -208,6 +263,12 @@ export class DocumentService {
     );
   }
 
+  /**
+   * Updates an existing document's Title and Description via PUT /documents/{id}.
+   * @param id The ID of the document to update.
+   * @param payload The updated title and description.
+   * @returns An Observable emitting the updated `DocumentItem`.
+   */
   updateDocument(id: string, payload: UpdateDocumentPayload): Observable<DocumentItem> {
     const start = performance.now();
     const url = `${this.apiBaseUrl}/documents/${encodeURIComponent(id)}`;
@@ -239,6 +300,11 @@ export class DocumentService {
     );
   }
 
+  /**
+   * Deletes a document record by ID via DELETE /documents/{id}.
+   * @param id The ID of the document to delete.
+   * @returns An Observable confirming deletion.
+   */
   deleteDocument(id: string): Observable<any> {
     const start = performance.now();
     const url = `${this.apiBaseUrl}/documents/${encodeURIComponent(id)}`;
@@ -270,6 +336,12 @@ export class DocumentService {
     );
   }
 
+  /**
+   * Parses an HTTP error response and extracts a user-friendly error message.
+   * Handles network disconnects (status 0), structured JSON error lists, and string payloads.
+   * @param err The HttpErrorResponse object.
+   * @returns Formatted error string for UI alerts.
+   */
   public extractErrorMessage(err: HttpErrorResponse): string {
     if (err.status === 0) {
       return `Network connection failed. Make sure the API is running at ${this.apiBaseUrl}.`;

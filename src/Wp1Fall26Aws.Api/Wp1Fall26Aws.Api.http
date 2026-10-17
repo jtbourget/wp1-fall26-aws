@@ -1,6 +1,67 @@
-@Wp1Fall26Aws.Api_HostAddress = http://localhost:5180
+@HostAddress = http://localhost:5180
 
-GET {{Wp1Fall26Aws.Api_HostAddress}}/weatherforecast/
+### 1. Health Check
+# Checks service liveness. Returns 200 OK with status "Healthy".
+GET {{HostAddress}}/health
 Accept: application/json
 
-###
+### 2. Retrieve All Documents (GET)
+# Retrieves all stored document metadata records ordered by newest first.
+GET {{HostAddress}}/documents
+Accept: application/json
+
+### 3. Retrieve Single Document by ID (GET)
+# Retrieves metadata for an individual document by its unique repository ID (e.g. doc-1).
+GET {{HostAddress}}/documents/doc-1
+Accept: application/json
+
+### 4. Create Document via JSON Payload (POST)
+# Creates a new text document and uploads the generated stream into Amazon S3.
+POST {{HostAddress}}/documents
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "API Documentation Scratchpad",
+  "description": "Created via .http scratchpad to test JSON POST route.",
+  "fileName": "api-scratchpad.txt",
+  "contentType": "text/plain",
+  "content": "This document was generated using Wp1Fall26Aws.Api.http."
+}
+
+### 5. Upload Document via Multipart Form (POST)
+# Uploads a binary/text file directly using multipart/form-data.
+POST {{HostAddress}}/documents
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="title"
+
+Multipart Upload Demo
+--WebAppBoundary
+Content-Disposition: form-data; name="description"
+
+Demonstrating multipart file persistence to AWS S3.
+--WebAppBoundary
+Content-Disposition: form-data; name="file"; filename="demo-upload.txt"
+Content-Type: text/plain
+
+This is sample uploaded file content for AWS S3 document store.
+--WebAppBoundary--
+
+### 6. Update Document Metadata (PUT)
+# Modifies the Title and Description of an existing document record.
+PUT {{HostAddress}}/documents/doc-1
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Updated Project Specification v2",
+  "description": "Updated architecture notes with comprehensive AWS S3 documentation."
+}
+
+### 7. Delete Document (DELETE)
+# Removes a document record from the storage repository.
+DELETE {{HostAddress}}/documents/doc-2
+Accept: application/json
+

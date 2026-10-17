@@ -9,15 +9,32 @@ using Xunit;
 
 namespace Wp1Fall26Aws.Tests;
 
+
+/// <summary>
+/// Integration tests verifying the end-to-end HTTP pipeline of the ASP.NET Core API.
+/// </summary>
+/// <remarks>
+/// Utilizes <see cref="WebApplicationFactory{TEntryPoint}"/> to start an in-memory test host.
+/// Injects test doubles (such as <see cref="RecordingS3ObjectClientSpy"/>) to verify boundary interactions
+/// without making live network calls to AWS S3.
+/// </remarks>
 public sealed class DocumentApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DocumentApiTests"/> class.
+    /// </summary>
+    /// <param name="factory">The shared web application factory fixture.</param>
     public DocumentApiTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory;
     }
 
+    /// <summary>
+    /// Verifies that POST /documents with multipart/form-data returns HTTP 201 Created,
+    /// sets the Location header with the generated S3 object key, and triggers the S3 client with original filename metadata.
+    /// </summary>
     [Fact]
     public async Task PostDocuments_ValidFile_Returns201AndCallsS3()
     {
@@ -50,6 +67,9 @@ public sealed class DocumentApiTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Equal("test.txt", spy.LastRequest.Metadata["original-filename"]);
     }
 
+    /// <summary>
+    /// Verifies that GET /documents returns HTTP 200 OK and includes pre-seeded repository items.
+    /// </summary>
     [Fact]
     public async Task GetDocuments_Returns200WithList()
     {
@@ -62,6 +82,9 @@ public sealed class DocumentApiTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Contains("doc-1", body);
     }
 
+    /// <summary>
+    /// Verifies that PUT /documents/{id} updates existing document metadata and returns HTTP 200 OK with the updated payload.
+    /// </summary>
     [Fact]
     public async Task PutDocument_ValidUpdate_Returns200WithUpdatedData()
     {
@@ -75,6 +98,10 @@ public sealed class DocumentApiTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Contains("Updated Title", body);
     }
 
+    /// <summary>
+    /// Verifies that DELETE /documents/{id} removes an existing document, returning HTTP 200 OK,
+    /// and that subsequent GET requests for that ID return HTTP 404 Not Found.
+    /// </summary>
     [Fact]
     public async Task DeleteDocument_ExistingItem_Returns200AndRemovesItem()
     {
